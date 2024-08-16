@@ -25,6 +25,7 @@ This project is a full-featured Discord clone that replicates core functionaliti
 - **shadcn/ui**: Pre-build components with typescript and tailwind.
 - **zod**: TypeScript-first schema declaration and validation library.
 - **Zustand**: A small, fast, and scalable bearbones state management solution.
+- **Kinde**: Simple, powerful authentication and customer identity.
 
 ## Installation
 
