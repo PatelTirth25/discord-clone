@@ -1,0 +1,140 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Profile {
+  id     String  @id @default(uuid())
+  userId String  @unique
+  name   String
+  imgUrl String  @db.Text
+  email  String? @db.Text
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  server  Server[]
+  member  Member[]
+  channel Channel[]
+}
+
+model Server {
+  id         String  @id @default(uuid())
+  name       String  @db.Text
+  imgUrl     String  @db.Text
+  inviteCode String? @unique
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  profileId String
+  profile   Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  channel Channel[]
+  member  Member[]
+}
+
+enum Role {
+  ADMIN
+  MODERATOR
+  USER
+}
+
+model Member {
+  id   String @id @default(uuid())
+  role Role   @default(USER)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  serverId String
+  server   Server @relation(fields: [serverId], references: [id], onDelete: Cascade)
+
+  profileId String
+  profile   Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  Message Message[]
+
+  conversationInitiated Conversation[] @relation("memberOne")
+  conversationReceived  Conversation[] @relation("memberTwo")
+
+  DirectMessage DirectMessage[]
+}
+
+enum ChannelType {
+  TEXT
+  AUDIO
+  VIDEO
+}
+
+model Channel {
+  id String @id @default(uuid())
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  name String
+  type ChannelType @default(TEXT)
+
+  serverId String
+  server   Server @relation(fields: [serverId], references: [id], onDelete: Cascade)
+
+  profileId String
+  profile   Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  message Message[]
+}
+
+model Message {
+  id String @id @default(uuid())
+
+  content String  @db.Text
+  fileUrl String? @db.Text
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  memberId String
+  member   Member @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  channelId String
+  channel   Channel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+
+  delete Boolean @default(false)
+}
+
+model Conversation {
+  id String @id @default(uuid())
+
+  memberOneId String
+  memberOne   Member @relation("memberOne", fields: [memberOneId], references: [id], onDelete: Cascade)
+
+  memberTwoId String
+  memberTwo   Member @relation("memberTwo", fields: [memberTwoId], references: [id], onDelete: Cascade)
+
+  DirectMessage DirectMessage[]
+
+  @@unique([memberOneId, memberTwoId])
+}
+
+model DirectMessage {
+  id String @id @default(uuid())
+
+  content String  @db.Text
+  fileUrl String? @db.Text
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  memberId String
+  member   Member @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  delete Boolean @default(false)
+}

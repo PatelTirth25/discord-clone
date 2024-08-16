@@ -1,0 +1,154 @@
+"use client"
+
+import { useForm } from "react-hook-form"
+import * as z from "zod"
+import { zodResolver } from "@hookform/resolvers/zod"
+import { useEffect } from "react"
+import { useRouter } from "next/navigation"
+import axios from "axios"
+import qs from 'query-string'
+import { useModalStore } from "@/hooks/use-modal-store"
+
+import { Input } from "../ui/input"
+import { Button } from "../ui/button"
+import { Form, FormField, FormControl, FormItem, FormMessage, FormLabel } from "@/components/ui/form"
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogHeader,
+    DialogTitle,
+    DialogFooter
+} from "@/components/ui/dialog"
+
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select"
+import { ChannelType } from "@prisma/client"
+import { channel } from "process"
+
+const formSchema = z.object({
+    name: z.string().min(1, { message: "Server name is required" }).refine(name => name !== 'general', { message: "Channel name cannot be 'general'" }),
+    type: z.nativeEnum(ChannelType)
+})
+
+const EditChannelModal = () => {
+    const { isOpen, close: modalClose, type: modalType, data: { Server, Channel } } = useModalStore()
+    let isModalOpen = isOpen && modalType === "editChannel"
+
+    const router = useRouter()
+
+    const form = useForm({
+        resolver: zodResolver(formSchema),
+        defaultValues: {
+            name: "",
+            type: Channel?.type || ChannelType.TEXT
+        }
+    })
+
+    useEffect(() => {
+        if (Channel) {
+            form.setValue("name", Channel.name)
+            form.setValue("type", Channel.type)
+        }
+    }, [Channel, form])
+
+    const loading = form.formState.isSubmitting
+    type formSchemaType = z.infer<typeof formSchema>
+
+    const onSubmit = async (values: formSchemaType) => {
+        try {
+            const url = qs.stringifyUrl({
+                url: `/api/channels/${Channel?.id}`,
+                query: {
+                    serverId: Server?.id
+                }
+            })
+
+            await axios.patch(url, values)
+
+            form.reset()
+            router.refresh()
+            modalClose()
+
+        } catch (error) {
+            console.log("Error in post: ", error)
+        }
+    }
+
+    const handleClose = () => {
+        form.reset()
+        modalClose()
+    }
+
+    return (
+        <Dialog open={isModalOpen} onOpenChange={handleClose}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Edit Channel</DialogTitle>
+                    <DialogDescription>
+                        Give your channel name and type.
+                    </DialogDescription>
+                </DialogHeader>
+                <Form {...form}>
+                    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+                        <FormField
+                            name="name"
+                            control={form.control}
+                            render={({ field }) => (
+                                < FormItem >
+                                    <FormLabel>Channel Name</FormLabel>
+                                    <FormControl>
+                                        <Input
+                                            disabled={loading}
+                                            placeholder="Enter server Name"
+                                            {...field}
+                                        />
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                        <FormField
+                            name="type"
+                            control={form.control}
+                            render={({ field }) => (
+                                < FormItem >
+                                    <FormLabel>Channel Type</FormLabel>
+                                    <FormControl>
+                                        <Select
+                                            disabled={loading}
+                                            onValueChange={field.onChange}
+                                            defaultValue={field.value}
+                                        >
+                                            <SelectTrigger>
+                                                <SelectValue placeholder="Select Channel Type" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value={ChannelType.TEXT}>Text</SelectItem>
+                                                <SelectItem value={ChannelType.AUDIO}>Audio</SelectItem>
+                                                <SelectItem value={ChannelType.VIDEO}>Video</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                        <DialogFooter>
+                            <Button disabled={loading}>
+                                Save
+                            </Button>
+                        </DialogFooter>
+                    </form>
+                </Form>
+            </DialogContent>
+        </Dialog >
+    )
+}
+
+export default EditChannelModal
